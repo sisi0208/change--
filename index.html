@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>護理智慧換班系統 - 手機不跑版穩定版</title>
+    <style>
+        /* 原生純 CSS 樣式，確保任何手機瀏覽器都不跑版 */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { background-color: #f8fafc; color: #1e293b; padding: 12px; line-height: 1.5; }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        /* 卡片設計 */
+        .card { background: #ffffff; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0; }
+        
+        /* 標題與標籤 */
+        h1 { font-size: 20px; font-weight: 800; color: #0f172a; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .subtitle { font-size: 12px; color: #64748b; margin-bottom: 12px; }
+        .badge { background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 20px; border: 1px solid #bfdbfe; display: inline-block; }
+        
+        /* 控制元件選單 */
+        .control-group { background: #f1f5f9; border-radius: 12px; padding: 12px; margin-bottom: 12px; font-size: 13px; }
+        .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+        .control-row:last-child { margin-bottom: 0; }
+        select, input, button { font-size: 13px; padding: 8px 10px; border-radius: 8px; border: 1px solid #cbd5e1; background-color: #ffffff; color: #0f172a; outline: none; }
+        select:focus, input:focus { border-color: #3b82f6; }
+        
+        /* 按鈕樣式 */
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #0d9488); color: #ffffff; font-weight: 700; border: none; padding: 12px; border-radius: 12px; width: 100%; cursor: pointer; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); font-size: 14px; }
+        .btn-secondary { background: #f1f5f9; color: #334155; font-weight: 600; border: 1px solid #cbd5e1; cursor: pointer; }
+        .btn-add { background: #0d9488; color: #ffffff; font-weight: 700; border: none; cursor: pointer; }
+        
+        /* 強制 7 欄月曆 (Grid) - 關鍵修正 */
+        .calendar-grid { display: grid !important; grid-template-columns: repeat(7, 1fr) !important; gap: 4px !important; margin-top: 8px; }
+        .week-header { text-align: center; font-size: 11px; font-weight: 700; color: #64748b; padding-bottom: 4px; }
+        .week-header.sun, .week-header.sat { color: #ef4444; }
+        
+        /* 月曆格子 */
+        .day-cell { height: 60px; border-radius: 8px; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; text-align: center; cursor: pointer; user-select: none; transition: transform 0.1s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .day-cell:active { transform: scale(0.95); }
+        .day-number { font-size: 10px; font-weight: 700; opacity: 0.85; display: flex; justify-content: space-between; }
+        .shift-title { font-size: 11px; font-weight: 800; margin-top: 2px; line-height: 1.1; }
+        .conflict-tag { font-size: 9px; font-weight: 800; background: #ffffff; color: #dc2626; border-radius: 4px; padding: 1px 0; margin-top: 2px; }
+        
+        /* 指定班別顏色碼 */
+        .shift-BC { background-color: #FEC773 !important; color: #5c3d00 !important; }
+        .shift-JB { background-color: #FE8936 !important; color: #ffffff !important; }
+        .shift-RN { background-color: #FF6347 !important; color: #ffffff !important; }
+        .shift-OFF, .shift-ZZ, .shift-ZX, .shift-ZY { background-color: #A9A9A9 !important; color: #ffffff !important; }
+        .shift-empty { background-color: #f1f5f9 !important; color: #94a3b8 !important; border: 1px dashed #cbd5e1; }
+        
+        /* 衝突閃爍 */
+        @keyframes pulse-red { 0%, 100% { background-color: #dc2626; color: #ffffff; } 50% { background-color: #991b1b; color: #ffffff; } }
+        .shift-conflict { animation: pulse-red 1s infinite; border: 2px solid #f87171 !important; }
+        
+        /* 換班籃清單 */
+        .basket-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 衝突報告 */
+        .report-box { border-radius: 12px; padding: 12px; font-size: 12px; margin-top: 12px; line-height: 1.6; }
+        .report-box.danger { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+        .report-box.success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+
+        /* 彈出抽屜 (Bottom Sheet) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; z-index: 1000; }
+        .modal-body { background: #ffffff; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; padding: 20px; text-align: center; }
+        .shift-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+        .shift-btn { padding: 12px; border-radius: 10px; font-weight: 800; font-size: 14px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 頁頭資訊 -->
+    <div class="card">
+        <h1>🏥 護理智慧換班</h1>
+        <div class="subtitle">手機最佳優化 · 100% 原生月曆不跑版</div>
+        <div class="badge" id="cycleBadge">載入時間中...</div>
+    </div>
+
+    <!-- 步驟一：排班月曆與快速選單 -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 14px; color: #1e293b;">📅 1. 點格子設定原班表</span>
+            <button onclick="resetToToday()" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;">回到今天</button>
+        </div>
+
+        <!-- 月份選擇控制區 -->
+        <div class="control-group">
+            <div class="control-row">
+                <label>快速選月份（由1號算28天）：</label>
+                <select id="monthSelect" onchange="changeMonthSelect()">
+                    <!-- 動態帶入 1-12 月 -->
+                </select>
+            </div>
+            <div class="control-row">
+                <label>或自訂起始日期：</label>
+                <input type="date" id="startDateInput" onchange="changeCustomDate()">
+            </div>
+        </div>
+
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">💡 預設班別顏色：<span style="color:#FEC773; font-weight:bold;">BC</span>、<span style="color:#FE8936; font-weight:bold;">JB</span>、<span style="color:#FF6347; font-weight:bold;">RN</span>、<span style="color:#A9A9A9; font-weight:bold;">休假(Off/ZZ/ZX/ZY)</span></div>
+
+        <!-- 強制 7 欄網格月曆 -->
+        <div class="calendar-grid">
+            <div class="week-header sun">日</div>
+            <div class="week-header">一</div>
+            <div class="week-header">二</div>
+            <div class="week-header">三</div>
+            <div class="week-header">四</div>
+            <div class="week-header">五</div>
+            <div class="week-header sat">六</div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid">
+            <!-- 程式動態繪製 -->
+        </div>
+    </div>
+
+    <!-- 步驟二：換班籃 -->
+    <div class="card">
+        <span style="font-weight: 700; font-size: 14px; color: #0d9488; display: block; margin-bottom: 8px;">🧺 2. 建立換班需求（同一籃）</span>
+        
+        <div class="control-group">
+            <div class="control-row">
+                <label>日期：</label>
+                <select id="swapDateSelect" style="flex:1;"></select>
+            </div>
+            <div class="control-row">
+                <label>方向：</label>
+                <select id="swapDirection" style="flex:1;">
+                    <option value="my_to_other">🟢 我跟別人換 (拿我的班換對方的)</option>
+                    <option value="other_to_my">🔵 別人跟我們換 (對方拿班跟我對調)</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>同事：</label>
+                <input type="text" id="swapColleague" placeholder="例如：美玲" style="flex:1;">
+            </div>
+            <div class="control-row">
+                <label>對方班別：</label>
+                <select id="colleagueShift" style="flex:1;">
+                    <option value="Off">Off (休假)</option>
+                    <option value="BC">BC (早班)</option>
+                    <option value="JB">JB (小夜)</option>
+                    <option value="RN">RN (大夜)</option>
+                    <option value="ZZ">ZZ (特休)</option>
+                    <option value="ZX">ZX (公假)</option>
+                    <option value="ZY">ZY (選假)</option>
+                </select>
+            </div>
+            <button onclick="addToBasket()" class="btn-add" style="width:100%; padding: 8px; margin-top: 4px; border-radius: 8px;">放入換班籃 🛒</button>
+        </div>
+
+        <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">換班籃清單：</div>
+        <div id="basketList">
+            <div style="font-size: 11px; color: #94a3b8; italic;">換班籃目前是空的...</div>
+        </div>
+
+        <button onclick="runSimulation()" class="btn-primary" style="margin-top: 12px;">✨ 一鍵執行換班與衝突檢測</button>
+    </div>
+
+    <!-- 步驟三：換班前後對比結果 -->
+    <div id="resultCard" class="card" style="display: none;">
+        <span style="font-weight: 700; font-size: 14px; color: #0f172a; display: block; margin-bottom: 8px;">📊 換班前後月曆對比</span>
+        
+        <div style="font-size: 12px; font-weight: 700; color: #3b82f6; margin-top: 4px;">🔴 換班前原班表：</div>
+        <div id="beforeGrid" class="calendar-grid"></div>
+
+        <div style="font-size: 12px; font-weight: 700; color: #0d9488; margin-top: 12px;">🟢 換班後新班表 (含撞班紅框與原因)：</div>
+        <div id="afterGrid" class="calendar-grid"></div>
+
+        <div id="reportBox" class="report-box"></div>
+    </div>
+</div>
+
+<!-- 點擊月曆選班別的彈出選單 (Modal) -->
+<div id="shiftModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-body" onclick="event.stopPropagation()">
+        <div style="font-weight: 700; font-size: 15px;" id="modalDateTitle">選擇班別</div>
+        <div class="shift-options">
+            <button class="shift-btn shift-BC" onclick="selectShift('BC')">BC</button>
+            <button class="shift-btn shift-JB" onclick="selectShift('JB')">JB</button>
+            <button class="shift-btn shift-RN" onclick="selectShift('RN')">RN</button>
+            <button class="shift-btn shift-OFF" onclick="selectShift('Off')">Off</button>
+            <button class="shift-btn shift-ZZ" onclick="selectShift('ZZ')">ZZ</button>
+            <button class="shift-btn shift-ZX" onclick="selectShift('ZX')">ZX</button>
+            <button class="shift-btn shift-ZY" onclick="selectShift('ZY')">ZY</button>
+        </div>
+        <button onclick="closeModalDirect()" class="btn-secondary" style="width:100%; padding: 10px; border-radius: 10px;">取消</button>
+    </div>
+</div>
+
+<script>
+    // 時間與數據核心
+    let startDateObj = new Date(); // 當前排班起始日
+    let cycleDays = [];            // 精準 28 天陣列
+    let mySchedule = {};           // Key: 'YYYY-MM-DD', Value: shift
+    let basket = [];               // 換班籃
+    let activeDateStr = '';        // 當前點擊修改的日期
+
+    function formatDateStr(d) {
+        let y = d.getFullYear();
+        let m = String(d.getMonth() + 1).padStart(2, '0');
+        let day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    // 初始化 28 天陣列
+    function calculate28Days(start) {
+        cycleDays = [];
+        let curr = new Date(start);
+        for (let i = 0; i < 28; i++) {
+            let dateStr = formatDateStr(curr);
+            cycleDays.push({
+                dateStr: dateStr,
+                month: curr.getMonth() + 1,
+                day: curr.getDate(),
+                dayOfWeek: curr.getDay()
+            });
+            // 預設班表
+            if (!mySchedule[dateStr]) {
+                mySchedule[dateStr] = (curr.getDay() === 0 || curr.getDay() === 6) ? 'Off' : 'BC';
+            }
+            curr.setDate(curr.getDate() + 1);
+        }
+    }
+
+    function initSystem() {
+        calculate28Days(startDateObj);
+        updateHeaderBadge();
+        renderMonthSelectOptions();
+        renderCalendarInput();
+        populateDateSelect();
+    }
+
+    function updateHeaderBadge() {
+        let endObj = new Date(startDateObj);
+        endObj.setDate(endObj.getDate() + 27);
+        document.getElementById('cycleBadge').innerText = `目前週期：${formatDateStr(startDateObj)} ～ ${formatDateStr(endObj)} (共28天)`;
+        document.getElementById('startDateInput').value = formatDateStr(startDateObj);
+    }
+
+    function renderMonthSelectOptions() {
+        const select = document.getElementById('monthSelect');
+        select.innerHTML = '';
+        let curY = startDateObj.getFullYear();
+        for (let m = 1; m <= 12; m++) {
+            let opt = document.createElement('option');
+            opt.value = m;
+            opt.text = `${curY}年 ${m}月`;
+            if (m === (startDateObj.getMonth() + 1)) opt.selected = true;
+            select.appendChild(opt);
+        }
+    }
+
+    function changeMonthSelect() {
+        let m = parseInt(document.getElementById('monthSelect').value);
+        let curY = startDateObj.getFullYear();
+        startDateObj = new Date(curY, m - 1, 1);
+        initSystem();
+    }
+
+    function changeCustomDate() {
+        let val = document.getElementById('startDateInput').value;
+        if (val) {
+            startDateObj = new Date(val);
+            initSystem();
+        }
+    }
+
+    function resetToToday() {
+        startDateObj = new Date();
+        initSystem();
+    }
+
+    function renderCalendarInput() {
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+
+        let firstDayOfWeek = cycleDays[0].dayOfWeek;
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            let empty = document.createElement('div');
+            empty.className = 'day-cell shift-empty';
+            grid.appendChild(empty);
+        }
+
+        cycleDays.forEach(item => {
+            let shift = mySchedule[item.dateStr] || '未排';
+            let cell = document.createElement('div');
+            cell.className = `day-cell shift-${shift}`;
+            cell.innerHTML = `
+                <div class="day-number">
+                    <span>${item.month}/${item.day}</span>
+                    <span>${['日','一','二','三','四','五','六'][item.dayOfWeek]}</span>
+                </div>
+                <div class="shift-title">${shift}</div>
+            `;
+            cell.onclick = () => openModal(item.dateStr, item.month, item.day);
+            grid.appendChild(cell);
+        });
+    }
+
+    function populateDateSelect() {
+        const select = document.getElementById('swapDateSelect');
+        select.innerHTML = '';
+        cycleDays.forEach(item => {
+            let opt = document.createElement('option');
+            opt.value = item.dateStr;
+            let currentShift = mySchedule[item.dateStr] || '未排';
+            opt.text = `${item.month}月${item.day}日 (${['日','一','二','三','四','五','六'][item.dayOfWeek]}) - 原班:${currentShift}`;
+            select.appendChild(opt);
+        });
+    }
+
+    // Modal 選班別操作
+    function openModal(dateStr, m, d) {
+        activeDateStr = dateStr;
+        document.getElementById('modalDateTitle').innerText = `修改 ${m}月${d}日 班別`;
+        document.getElementById('shiftModal').style.display = 'flex';
+    }
+    function closeModal(e) { document.getElementById('shiftModal').style.display = 'none'; }
+    function closeModalDirect() { document.getElementById('shiftModal').style.display = 'none'; }
+    
+    function selectShift(shift) {
+        if (activeDateStr) {
+            mySchedule[activeDateStr] = shift;
+            renderCalendarInput();
+            populateDateSelect();
+        }
+        closeModalDirect();
+    }
+
+    // 換班籃邏輯
+    function addToBasket() {
+        const date = document.getElementById('swapDateSelect').value;
+        const direction = document.getElementById('swapDirection').value;
+        const colleague = document.getElementById('swapColleague').value.trim();
+        const colleagueShift = document.getElementById('colleagueShift').value;
+
+        if (!colleague) {
+            alert('請輸入同事姓名！');
+            return;
+        }
+
+        basket.push({ date, direction, colleague, colleagueShift });
+        renderBasket();
+    }
+
+    function renderBasket() {
+        const list = document.getElementById('basketList');
+        if (basket.length === 0) {
+            list.innerHTML = '<div style="font-size: 11px; color: #94a3b8; italic;">換班籃目前是空的...</div>';
+            return;
+        }
+        list.innerHTML = '';
+        basket.forEach((item, idx) => {
+            let div = document.createElement('div');
+            div.className = 'basket-item';
+            let dirText = item.direction === 'my_to_other' ? '🟢我換給他' : '🔵他跟我換';
+            div.innerHTML = `
+                <span><b>${item.date}</b> [${dirText}] ${item.colleague} (${item.colleagueShift})</span>
+                <span onclick="removeFromBasket(${idx})" style="color:#ef4444; font-weight:bold; cursor:pointer; padding:0 4px;">✕</span>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function removeFromBasket(idx) {
+        basket.splice(idx, 1);
+        renderBasket();
+    }
+
+    // 執行換班與衝突診斷
+    function runSimulation() {
+        if (basket.length === 0) {
+            alert('換班籃內沒有資料！');
+            return;
+        }
+
+        document.getElementById('resultCard').style.display = 'block';
+        renderStaticGrid('beforeGrid', mySchedule, false, {});
+
+        let simulated = { ...mySchedule };
+        let conflicts = [];
+        let conflictDetails = {}; // 記錄特定日期的衝突原因短標
+
+        // 統計日期出現次數 (撞班)
+        let dateCounts = {};
+        basket.forEach(b => { dateCounts[b.date] = (dateCounts[b.date] || 0) + 1; });
+
+        basket.forEach(swap => {
+            let originalShift = mySchedule[swap.date] || '未排班';
+            
+            // 情況1：同一天撞2個換班需求
+            if (dateCounts[swap.date] > 1) {
+                conflicts.push(`💥 <b>【同一天撞班】</b>你在 ${swap.date} 原本是 <b>${originalShift}</b>，當天設定了多筆換班需求，分身乏術！`);
+                conflictDetails[swap.date] = `撞${dateCounts[swap.date]}班`;
+            }
+            // 情況2：原本班別跟對方班別一模一樣 (無效換班)
+            else if (originalShift === swap.colleagueShift) {
+                conflicts.push(`⚠️ <b>【無效換班】</b>你在 ${swap.date} 原本就是 <b>${originalShift}</b>，跟 ${swap.colleague} 對調後依然是 <b>${swap.colleagueShift}</b>，換了等於沒換！`);
+                conflictDetails[swap.date] = `換完同班`;
+            }
+
+            simulated[swap.date] = swap.colleagueShift;
+        });
+
+        renderStaticGrid('afterGrid', simulated, true, conflictDetails);
+
+        const reportBox = document.getElementById('reportBox');
+        if (conflicts.length > 0) {
+            reportBox.className = 'report-box danger';
+            reportBox.innerHTML = `<b>🚨 偵測到換班衝突，請修正：</b><br>` + conflicts.join('<br>');
+        } else {
+            reportBox.className = 'report-box success';
+            reportBox.innerHTML = `<b>✅ 換班檢測完全通過！</b><br>換班籃內的所有項目皆無衝突與重複，可放心送出申請單！`;
+        }
+    }
+
+    function renderStaticGrid(elementId, scheduleData, isAfter, conflictDetails) {
+        const grid = document.getElementById(elementId);
+        grid.innerHTML = '';
+
+        let firstDayOfWeek = cycleDays[0].dayOfWeek;
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            let empty = document.createElement('div');
+            empty.className = 'day-cell shift-empty';
+            grid.appendChild(empty);
+        }
+
+        cycleDays.forEach(item => {
+            let shift = scheduleData[item.dateStr] || '未排';
+            let cell = document.createElement('div');
+            
+            let isConflict = isAfter && conflictDetails[item.dateStr];
+            if (isConflict) {
+                cell.className = `day-cell shift-conflict`;
+            } else {
+                cell.className = `day-cell shift-${shift}`;
+            }
+
+            cell.innerHTML = `
+                <div class="day-number">
+                    <span>${item.month}/${item.day}</span>
+                    <span>${['日','一','二','三','四','五','六'][item.dayOfWeek]}</span>
+                </div>
+                <div class="shift-title">${shift}</div>
+                ${isConflict ? `<div class="conflict-tag">${conflictDetails[item.dateStr]}</div>` : ''}
+            `;
+            grid.appendChild(cell);
+        });
+    }
+
+    window.onload = initSystem;
+</script>
+
+</body>
+</html>
